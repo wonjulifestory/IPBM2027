@@ -720,10 +720,10 @@
       box-shadow: 0 3px 12px rgba(21, 152, 141, 0.14);
       border-color: var(--ipbm-teal-border);
     }
-    .session-card.is-live {
+    .session-card.is-live, .session-card.is-jumped {
       border: 2px solid #E11D48;
       border-left: 6px solid #E11D48;
-      box-shadow: 0 4px 16px rgba(225, 29, 72, 0.16);
+      box-shadow: 0 4px 16px rgba(225, 29, 72, 0.22);
     }
 
     .tone-teal   { background: var(--pastel-teal);   border-left-color: #15988D; }
@@ -1370,7 +1370,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const APP_VERSION = 'v1.1.7';
+    const APP_VERSION = 'v1.1.8';
     const STORAGE_KEY_SAVED = 'ipbm2027_saved_sessions_v1';
     const STORAGE_KEY_LANG = 'ipbm2027_lang_v1';
 
@@ -2085,6 +2085,35 @@
       return { status: 'AFTER', day: 2, kst, items: [] };
     }
 
+    function findCurrentSubTalk(session, mins) {
+      if (!session || !session.talks || !session.talks.length) return null;
+      for (const tk of session.talks) {
+        const m = tk.time && tk.time.match(/^(\d{2}:\d{2})[–-](\d{2}:\d{2})$/);
+        if (m) {
+          const s = toMin(m[1]), e = toMin(m[2]);
+          if (mins >= s && mins < e) return tk;
+        }
+      }
+      return session.talks[0];
+    }
+
+    function jumpToProgramSession(sessionId, dayNum) {
+      closeDetail();
+      selectedDay = dayNum || 1;
+      trackFilter = 'ALL';
+      roomFilter = 'ALL';
+      searchQuery = '';
+      switchTab('program');
+      setTimeout(() => {
+        const el = document.getElementById('session-card-' + sessionId);
+        if (el) {
+          el.classList.add('is-jumped');
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setTimeout(() => el.classList.remove('is-jumped'), 2800);
+        }
+      }, 60);
+    }
+
     function renderRoomBoardForDay(dayNum, kst, isKo) {
       const daySessions = SESSIONS.filter((s) => s.day === dayNum && s.id !== 'd1-reg').sort((a, b) => toMin(a.start) - toMin(b.start));
       const rows = BOARD_ROOMS.map((room) => {
@@ -2094,15 +2123,23 @@
           const total = Math.max(1, toMin(live.end) - toMin(live.start));
           const pct = Math.min(100, Math.max(5, Math.round(((kst.mins - toMin(live.start)) / total) * 100)));
           const rem = Math.max(1, toMin(live.end) - kst.mins);
+          const subTalk = findCurrentSubTalk(live, kst.mins);
+          const subHtml = subTalk
+            ? '<div style="margin-top:5px;padding:5px 8px;border-radius:8px;background:rgba(255,255,255,0.92);border:1px solid #FECDD3;font-size:11.5px;color:#0F172A;line-height:1.35;">' +
+                '🎤 <b>' + subTalk.time + '</b> ' + subTalk.topic +
+                (subTalk.speaker ? '<div style="color:#BE123C;font-weight:700;margin-top:2px;">👤 ' + subTalk.speaker + '</div>' : '') +
+              '</div>'
+            : '';
           return {
             rank: 0,
-            html: '<div class="room-row is-live" onclick="openDetail(\'' + live.id + '\')">' +
+            html: '<div class="room-row is-live" onclick="jumpToProgramSession(\'' + live.id + '\', ' + live.day + ')">' +
               '<div class="room-row-top">' +
                 '<span class="room-name">📍 ' + room + '</span>' +
-                '<span class="room-status live">● ' + (isKo ? '진행 ' + pct + '%' : 'LIVE ' + pct + '%') + '</span>' +
+                '<span class="room-status live">● ' + (isKo ? '실시간 강의 ' + pct + '%' : 'LIVE ' + pct + '%') + '</span>' +
               '</div>' +
               '<div class="room-session-title">' + live.title + '</div>' +
-              '<div class="room-session-time"><span>🕒 ' + live.start + '–' + live.end + '</span><span>' + (isKo ? rem + '분 남음' : rem + 'm left') + '</span></div>' +
+              subHtml +
+              '<div class="room-session-time" style="margin-top:5px;"><span>🕒 ' + live.start + '–' + live.end + ' (' + (isKo ? rem + '분 남음' : rem + 'm left') + ')</span><span style="color:#E11D48;font-weight:800;">' + (isKo ? '프로그램 이동 ›' : 'Go to Program ›') + '</span></div>' +
               '<div class="live-progress"><div class="live-progress-bar" style="width:' + pct + '%;"></div></div>' +
             '</div>'
           };
@@ -2110,15 +2147,17 @@
         const next = rs.find((s) => toMin(s.start) > kst.mins);
         if (next) {
           const wait = toMin(next.start) - kst.mins;
+          const subTalk = findCurrentSubTalk(next, toMin(next.start));
           return {
             rank: 1,
-            html: '<div class="room-row is-next" onclick="openDetail(\'' + next.id + '\')">' +
+            html: '<div class="room-row is-next" onclick="jumpToProgramSession(\'' + next.id + '\', ' + next.day + ')">' +
               '<div class="room-row-top">' +
                 '<span class="room-name">📍 ' + room + '</span>' +
-                '<span class="room-status next">⏳ ' + (isKo ? wait + '분 후' : 'in ' + wait + 'm') + '</span>' +
+                '<span class="room-status next">⏳ ' + (isKo ? wait + '분 후 시작' : 'in ' + wait + 'm') + '</span>' +
               '</div>' +
               '<div class="room-session-title">' + next.title + '</div>' +
-              '<div class="room-session-time"><span>🕒 ' + next.start + '–' + next.end + '</span><span>' + (isKo ? '다음 일정' : 'Up Next') + '</span></div>' +
+              (subTalk ? '<div style="margin-top:4px;font-size:11px;color:#334155;">🎤 ' + subTalk.topic + (subTalk.speaker ? ' — <b>' + subTalk.speaker + '</b>' : '') + '</div>' : '') +
+              '<div class="room-session-time" style="margin-top:4px;"><span>🕒 ' + next.start + '–' + next.end + '</span><span style="color:#15988D;font-weight:800;">' + (isKo ? '프로그램 이동 ›' : 'Go to Program ›') + '</span></div>' +
             '</div>'
           };
         }
@@ -2126,13 +2165,13 @@
         if (!last) return { rank: 3, html: '' };
         return {
           rank: 2,
-          html: '<div class="room-row" onclick="openDetail(\'' + last.id + '\')">' +
+          html: '<div class="room-row" onclick="jumpToProgramSession(\'' + last.id + '\', ' + last.day + ')">' +
             '<div class="room-row-top">' +
               '<span class="room-name">📍 ' + room + '</span>' +
               '<span class="room-status done">✓ ' + (isKo ? '종료' : 'Ended') + '</span>' +
             '</div>' +
             '<div class="room-session-title" style="color:#64748B;">' + last.title + '</div>' +
-            '<div class="room-session-time"><span>🕒 ' + last.start + '–' + last.end + '</span><span>' + (isKo ? '일정 완료' : 'Done') + '</span></div>' +
+            '<div class="room-session-time"><span>🕒 ' + last.start + '–' + last.end + '</span><span style="color:#182B59;font-weight:700;">' + (isKo ? '프로그램 이동 ›' : 'Go to Program ›') + '</span></div>' +
           '</div>'
         };
       });
@@ -2603,9 +2642,9 @@
       return (s.title + ' ' + s.subtitle + ' ' + s.category + ' ' + s.room + ' ' + (s.joint || '') + ' ' + (s.aliases || '') + ' ' + talkTxt).toLowerCase();
     }
 
-    let simLiveMode = false;
-    function toggleSimLiveInSheet() {
-      simLiveMode = !simLiveMode;
+    let liveSheetDay = 1;
+    function setLiveSheetDay(d) {
+      liveSheetDay = d;
       openLiveBoardSheet();
     }
 
@@ -2613,33 +2652,39 @@
       const t = T[lang];
       const isKo = lang === 'ko';
       const closeLabel = isKo ? '닫기' : 'Close';
-      const simKst = simLiveMode
-        ? { dateStr: '2027-04-02', hhmm: '14:20', mins: 14 * 60 + 20 }
-        : getCurrentKstParts();
-      const activeDay = Number(Object.keys(DAY_DATES).find((k) => DAY_DATES[k] === simKst.dateStr)) || 0;
-      const bodyHtml = activeDay > 0
-        ? renderRoomBoardForDay(activeDay, simKst, isKo)
-        : '<div class="room-board">' + BOARD_ROOMS.map((room) =>
-            '<div class="room-row" onclick="openRoomMap(\'' + room + '\')" style="background:#F8FAFC;border:1px solid #CBD5E1;">' +
-              '<div class="room-row-top">' +
-                '<span class="room-name">📍 ' + room + '</span>' +
-                '<span class="room-status done">' + (isKo ? '🗺 위치 보기' : '🗺 View Map') + '</span>' +
-              '</div>' +
-              '<div class="room-session-time"><span>' + (isKo ? '2027. 4. 2(금)–3(토) 진행 예정' : 'Scheduled for Apr 2–3, 2027') + '</span></div>' +
-            '</div>'
-          ).join('') + '</div>';
+      const realKst = getCurrentKstParts();
+      const realActiveDay = Number(Object.keys(DAY_DATES).find((k) => DAY_DATES[k] === realKst.dateStr)) || 0;
+      const targetDay = realActiveDay > 0 ? realActiveDay : liveSheetDay;
+      // Map current clock time into active conference hours (09:00–16:50) if outside congress hours so live lectures are always shown
+      const effectiveMins = (realKst.mins >= 9 * 60 && realKst.mins < 16 * 60 + 50)
+        ? realKst.mins
+        : 9 * 60 + 25;
+      const effH = String(Math.floor(effectiveMins / 60)).padStart(2, '0');
+      const effM = String(effectiveMins % 60).padStart(2, '0');
+      const effKst = { dateStr: DAY_DATES[targetDay], hhmm: `${effH}:${effM}`, mins: effectiveMins };
+
+      const daySwitchHtml = `
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:10px;">
+          ${[1, 2].map((d) => `
+            <button onclick="setLiveSheetDay(${d})" style="border:1.5px solid ${targetDay === d ? '#15988D' : '#CBD5E1'};background:${targetDay === d ? '#15988D' : '#FFFFFF'};color:${targetDay === d ? '#FFFFFF' : '#334155'};font-size:12px;font-weight:800;padding:7px 8px;border-radius:10px;cursor:pointer;">
+              ${t.days[d].short} · ${t.days[d].date}
+            </button>
+          `).join('')}
+        </div>
+      `;
 
       document.getElementById('detailContent').innerHTML = `
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
           <div style="display:flex;align-items:center;gap:7px;">
-            <span class="live-pill ${activeDay > 0 ? '' : 'dday'}">📍 ${isKo ? '방별 실시간 현황' : 'Live by Room'}</span>
-            <button onclick="toggleSimLiveInSheet()" style="border:1px solid #CBD5E1;background:#FFFFFF;color:#182B59;font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;cursor:pointer;">
-              ${simLiveMode ? (isKo ? '✕ 미리보기 종료' : '✕ Exit Demo') : (isKo ? '▶ 진행중 미리보기' : '▶ Demo Live')}
-            </button>
+            <span class="live-pill"><span class="live-dot"></span> ${isKo ? '방별 실시간 강의 현황' : 'Live Lectures by Room'}</span>
           </div>
           <button class="sheet-top-close" onclick="closeDetail()">✕ ${closeLabel}</button>
         </div>
-        ${bodyHtml}
+        <div style="font-size:11.5px;color:#475569;margin-bottom:8px;font-weight:600;">
+          💡 ${isKo ? '강의를 누르면 해당 프로그램 화면으로 바로 이동합니다.' : 'Tap any room lecture to jump directly to Program.'}
+        </div>
+        ${daySwitchHtml}
+        ${renderRoomBoardForDay(targetDay, effKst, isKo)}
         <div class="sheet-actions">
           <button class="sheet-cta close-btn" style="flex:1;" onclick="closeDetail()">${closeLabel}</button>
         </div>
@@ -2751,7 +2796,7 @@
                 ? s.talks.filter((tk) => (tk.topic + ' ' + (tk.speaker || '')).toLowerCase().includes(q))
                 : [];
               return `
-                <article class="session-card tone-${s.tone} ${isSaved ? 'saved' : ''} ${isLive ? 'is-live' : ''}" onclick="openDetail('${s.id}')">
+                <article id="session-card-${s.id}" class="session-card tone-${s.tone} ${isSaved ? 'saved' : ''} ${isLive ? 'is-live' : ''}" onclick="openDetail('${s.id}')">
                   <div class="card-top">
                     <div class="badges">
                       ${isLive ? `<span class="live-inline-badge"><span class="live-dot"></span> ${t.liveNow}</span>` : ''}

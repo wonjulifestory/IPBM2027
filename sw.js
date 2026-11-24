@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ipbm2027-v11';
+const CACHE_NAME = 'ipbm2027-v12';
 const ASSETS = [
   './',
   './index.html',
