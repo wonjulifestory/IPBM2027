@@ -513,21 +513,36 @@
     }
 
     /* One-Screen Zero-Scroll Home Layout (Official Mobile Page Style) */
+    body.home-locked {
+      overflow: hidden !important;
+      overscroll-behavior: none !important;
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
     .app-shell.is-home {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      max-width: 520px;
+      margin: 0 auto;
       height: 100vh;
       height: 100dvh;
-      overflow: hidden;
+      overflow: hidden !important;
+      overscroll-behavior: none !important;
+      touch-action: none;
       background-color: #FFFFFF;
       background-image: url('./assets/home_blossom_br.png');
       background-repeat: no-repeat;
-      background-position: right bottom 54px;
-      background-size: 58% auto;
+      background-position: right bottom 52px;
+      background-size: 56% auto;
     }
     .app-shell.is-home .main-content {
       flex: 1;
       min-height: 0;
-      overflow: hidden;
-      padding: 0 12px calc(62px + env(safe-area-inset-bottom)) !important;
+      overflow: hidden !important;
+      padding: 0 12px calc(58px + env(safe-area-inset-bottom)) !important;
       display: flex;
       flex-direction: column;
     }
@@ -536,12 +551,12 @@
       min-height: 0;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
-      gap: 8px !important;
+      justify-content: flex-start;
+      gap: 6px !important;
       padding-top: 0 !important;
     }
     .app-shell.is-home .home-visual-card {
-      flex: 0 1 auto;
+      flex: 0 0 auto;
       width: calc(100% + 24px);
       margin: 0 -12px;
       background: transparent;
@@ -553,8 +568,8 @@
     .app-shell.is-home .home-visual-img {
       width: 100%;
       height: auto;
-      max-height: 46dvh;
-      object-fit: cover;
+      max-height: 44dvh;
+      object-fit: contain;
       object-position: top center;
       display: block;
     }
@@ -562,12 +577,12 @@
       flex-shrink: 0;
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 11px !important;
-      margin-top: auto;
+      gap: 10px !important;
+      margin-top: 2px;
     }
     .app-shell.is-home .home-tile {
-      min-height: 108px;
-      padding: 14px 14px 12px !important;
+      min-height: 98px;
+      padding: 13px 14px 11px !important;
       border-radius: 18px !important;
       border: none !important;
       background: linear-gradient(155deg, #524FB6 0%, #3E72C4 55%, #46A3D4 100%) !important;
@@ -1355,7 +1370,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const APP_VERSION = 'v1.1.4';
+    const APP_VERSION = 'v1.1.5';
     const STORAGE_KEY_SAVED = 'ipbm2027_saved_sessions_v1';
     const STORAGE_KEY_LANG = 'ipbm2027_lang_v1';
 
@@ -2907,6 +2922,7 @@
       document.documentElement.lang = lang;
       const shellEl = document.querySelector('.app-shell');
       if (shellEl) shellEl.classList.toggle('is-home', currentTab === 'home');
+      document.body.classList.toggle('home-locked', currentTab === 'home');
       const ddayEl = document.getElementById('headerDdayBadge');
       if (ddayEl) ddayEl.textContent = getHeaderDDayText();
       document.getElementById('langToggleBtn').textContent = lang === 'ko' ? 'EN' : '한국어';
