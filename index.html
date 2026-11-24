@@ -101,7 +101,18 @@
     }
 
     .brand-date-pill {
-      display: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 900;
+      color: #FFFFFF;
+      background: linear-gradient(135deg, #BD406E 0%, #4E4DB2 100%);
+      padding: 4px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+      box-shadow: 0 2px 8px rgba(189, 64, 110, 0.25);
     }
 
     .lang-btn {
@@ -1271,7 +1282,7 @@
       <div class="brand-bar">
         <div class="brand-left" onclick="switchTab('home')">
           <img src="./assets/logo_ipbm2027.png" alt="IPBM 2027" class="brand-logo" />
-          <span class="brand-date-pill">Apr 2–3, 2027</span>
+          <span class="brand-date-pill" id="headerDdayBadge">D-129</span>
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
           <button class="lang-btn" style="padding:5px 9px;" onclick="forceRefresh()" title="Refresh" aria-label="Refresh">↻</button>
@@ -1332,7 +1343,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const APP_VERSION = 'v1.1.2';
+    const APP_VERSION = 'v1.1.3';
     const STORAGE_KEY_SAVED = 'ipbm2027_saved_sessions_v1';
     const STORAGE_KEY_LANG = 'ipbm2027_lang_v1';
 
@@ -2815,11 +2826,23 @@
       `;
     }
 
+    function getHeaderDDayText() {
+      const kst = getCurrentKstParts();
+      if (kst.dateStr === '2027-04-02' || kst.dateStr === '2027-04-03') return 'D-DAY';
+      const d1 = new Date('2027-04-02T00:00:00+09:00');
+      const dn = new Date(kst.dateStr + 'T00:00:00+09:00');
+      const diff = Math.round((d1 - dn) / 86400000);
+      if (diff > 0) return 'D-' + diff;
+      return 'D+' + Math.abs(diff);
+    }
+
     function render() {
       const t = T[lang];
       document.documentElement.lang = lang;
       const shellEl = document.querySelector('.app-shell');
       if (shellEl) shellEl.classList.toggle('is-home', currentTab === 'home');
+      const ddayEl = document.getElementById('headerDdayBadge');
+      if (ddayEl) ddayEl.textContent = getHeaderDDayText();
       document.getElementById('langToggleBtn').textContent = lang === 'ko' ? 'EN' : '한국어';
       document.getElementById('savedCountBadge').textContent = savedIds.size;
 
