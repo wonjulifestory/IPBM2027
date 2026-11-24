@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ipbm2027-v5';
+const CACHE_NAME = 'ipbm2027-v6';
 const ASSETS = [
   './',
   './index.html',
@@ -9,6 +9,7 @@ const ASSETS = [
   './assets/favicon.png',
   './assets/logo_ipbm2027.png',
   './assets/home_visual.png',
+  './assets/home_blossom_br.png',
   './assets/map_b2_vista.png',
   './assets/map_b1_grand.png',
   './assets/map_1f_walker.png'

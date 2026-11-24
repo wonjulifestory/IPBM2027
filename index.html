@@ -95,19 +95,13 @@
     }
 
     .brand-logo {
-      height: 22px;
+      height: 32px;
       width: auto;
       display: block;
     }
 
     .brand-date-pill {
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--ipbm-navy);
-      background: var(--ipbm-navy-soft);
-      padding: 3px 8px;
-      border-radius: 999px;
-      white-space: nowrap;
+      display: none;
     }
 
     .lang-btn {
@@ -507,17 +501,22 @@
       justify-content: space-between;
     }
 
-    /* One-Screen Zero-Scroll Home Layout */
+    /* One-Screen Zero-Scroll Home Layout (Official Mobile Page Style) */
     .app-shell.is-home {
       height: 100vh;
       height: 100dvh;
       overflow: hidden;
+      background-color: #FFFFFF;
+      background-image: url('./assets/home_blossom_br.png');
+      background-repeat: no-repeat;
+      background-position: right bottom 54px;
+      background-size: 58% auto;
     }
     .app-shell.is-home .main-content {
       flex: 1;
       min-height: 0;
       overflow: hidden;
-      padding: 0 10px calc(64px + env(safe-area-inset-bottom)) !important;
+      padding: 0 12px calc(62px + env(safe-area-inset-bottom)) !important;
       display: flex;
       flex-direction: column;
     }
@@ -526,49 +525,56 @@
       min-height: 0;
       display: flex;
       flex-direction: column;
-      gap: 7px !important;
+      justify-content: space-between;
+      gap: 8px !important;
       padding-top: 0 !important;
     }
     .app-shell.is-home .home-visual-card {
-      flex: 1 1 0;
-      min-height: 220px;
-      width: calc(100% + 20px);
-      margin: 0 -10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #FFFFFF;
-      border-radius: 0 0 18px 18px;
-      border-left: none;
-      border-right: none;
-      border-top: none;
-      box-shadow: 0 4px 16px rgba(24, 43, 89, 0.08);
+      flex: 0 1 auto;
+      width: calc(100% + 24px);
+      margin: 0 -12px;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      overflow: hidden;
     }
     .app-shell.is-home .home-visual-img {
       width: 100%;
-      height: 100%;
-      object-fit: contain;
+      height: auto;
+      max-height: 46dvh;
+      object-fit: cover;
+      object-position: top center;
+      display: block;
     }
     .app-shell.is-home .home-menu-grid {
       flex-shrink: 0;
-      gap: 7px !important;
+      gap: 9px !important;
     }
     .app-shell.is-home .home-tile {
-      padding: 8px 6px 7px !important;
-      gap: 4px !important;
-      border-radius: 14px !important;
+      padding: 12px 8px 11px !important;
+      gap: 6px !important;
+      border-radius: 16px !important;
+      border: none !important;
+      background: linear-gradient(155deg, #524FB6 0%, #3E72C4 55%, #46A3D4 100%) !important;
+      box-shadow: 0 6px 16px rgba(62, 114, 196, 0.24) !important;
     }
     .app-shell.is-home .home-tile-icon {
       width: 38px !important;
       height: 38px !important;
       border-radius: 11px !important;
+      background: rgba(255, 255, 255, 0.18) !important;
+      color: #FFFFFF !important;
+      box-shadow: none !important;
     }
     .app-shell.is-home .home-tile-icon svg {
-      width: 20px;
-      height: 20px;
+      width: 22px;
+      height: 22px;
     }
     .app-shell.is-home .home-tile-label {
-      font-size: 12px !important;
+      font-size: 13px !important;
+      color: #FFFFFF !important;
+      letter-spacing: -0.01em;
     }
     .app-shell.is-home .home-install-cta {
       display: none !important;
@@ -577,6 +583,8 @@
       flex-shrink: 0;
       padding: 8px 10px !important;
       border-radius: 14px !important;
+      background: rgba(255, 255, 255, 0.90) !important;
+      backdrop-filter: blur(6px);
     }
     .app-shell.is-home .live-header {
       margin-bottom: 5px !important;
@@ -1324,7 +1332,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const APP_VERSION = 'v1.1.1';
+    const APP_VERSION = 'v1.1.2';
     const STORAGE_KEY_SAVED = 'ipbm2027_saved_sessions_v1';
     const STORAGE_KEY_LANG = 'ipbm2027_lang_v1';
 
