@@ -825,6 +825,94 @@
       background: #FFF8E1;
       color: #F59E0B;
     }
+    .star-all-btn {
+      border: 1.5px solid #CBD5E1;
+      background: rgba(255, 255, 255, 0.95);
+      color: #475569;
+      font-size: 11.5px;
+      font-weight: 800;
+      padding: 5px 10px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      flex-shrink: 0;
+      white-space: nowrap;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+    .star-all-btn.saved {
+      background: #FFF8E1;
+      border-color: #F59E0B;
+      color: #D97706;
+    }
+    .star-all-btn.partial {
+      background: #EAF8F6;
+      border-color: #15988D;
+      color: #0F766E;
+    }
+    .card-talk-list {
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .card-talk-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 7px 9px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid rgba(24, 43, 89, 0.09);
+    }
+    .card-talk-row.is-saved {
+      background: #FFFDF5;
+      border-color: #FCD34D;
+    }
+    .card-talk-body {
+      flex: 1;
+      min-width: 0;
+    }
+    .card-talk-time {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--ipbm-teal);
+      font-variant-numeric: tabular-nums;
+    }
+    .card-talk-topic {
+      font-size: 12px;
+      font-weight: 700;
+      color: #0F172A;
+      line-height: 1.35;
+      margin-top: 1px;
+    }
+    .card-talk-speaker {
+      font-size: 11px;
+      color: #475569;
+      margin-top: 2px;
+    }
+    .talk-star-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 1px solid #E2E8F0;
+      background: #FFFFFF;
+      color: #94A3B8;
+      font-size: 16px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .talk-star-btn.saved {
+      background: #FFF8E1;
+      border-color: #F59E0B;
+      color: #F59E0B;
+    }
 
     .card-title {
       font-size: 14.5px;
@@ -1370,7 +1458,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const APP_VERSION = 'v1.1.9';
+    const APP_VERSION = 'v1.2.0';
     const STORAGE_KEY_SAVED = 'ipbm2027_saved_sessions_v1';
     const STORAGE_KEY_LANG = 'ipbm2027_lang_v1';
 
@@ -2305,18 +2393,136 @@
       render();
     }
 
+    function isSelectableTalk(tk) {
+      if (!tk || !tk.topic) return false;
+      const tp = tk.topic.trim();
+      if (/^Q&A/i.test(tp)) return false;
+      if (tk.time === 'Highlight') return false;
+      return true;
+    }
+
+    function getSelectableTalkIndices(s) {
+      if (!s || !s.talks || !s.talks.length) return [0];
+      const indices = [];
+      s.talks.forEach((tk, idx) => {
+        if (isSelectableTalk(tk)) indices.push(idx);
+      });
+      return indices.length ? indices : [0];
+    }
+
+    function talkKey(sessionId, idx) {
+      return `${sessionId}__${idx}`;
+    }
+
+    function isTalkSaved(s, idx) {
+      return savedIds.has(talkKey(s.id, idx)) || savedIds.has(s.id);
+    }
+
+    function getSavedTalkIndices(s) {
+      return getSelectableTalkIndices(s).filter((i) => isTalkSaved(s, i));
+    }
+
+    function getSessionSaveState(s) {
+      const allIdx = getSelectableTalkIndices(s);
+      const savedIdx = getSavedTalkIndices(s);
+      return {
+        total: allIdx.length,
+        saved: savedIdx.length,
+        isFull: savedIdx.length === allIdx.length && allIdx.length > 0,
+        isPartial: savedIdx.length > 0 && savedIdx.length < allIdx.length,
+        hasAny: savedIdx.length > 0
+      };
+    }
+
+    function parseTalkStartEnd(tk, s) {
+      const m = tk && tk.time && tk.time.match(/^(\d{2}:\d{2})[–-](\d{2}:\d{2})$/);
+      if (m) return { start: m[1], end: m[2] };
+      return { start: s.start, end: s.end };
+    }
+
+    function getMyScheduleEntriesForDay(dayNum) {
+      const entries = [];
+      SESSIONS.filter((s) => s.day === dayNum).forEach((s) => {
+        const st = getSessionSaveState(s);
+        if (!st.hasAny) return;
+        const savedIdx = getSavedTalkIndices(s);
+        if (st.total === 1 || st.isFull) {
+          entries.push({
+            uid: s.id + '__full',
+            type: st.total > 1 ? 'full-session' : 'single-session',
+            s,
+            savedIndices: savedIdx,
+            start: s.start,
+            end: s.end
+          });
+        } else {
+          savedIdx.forEach((idx) => {
+            const tk = s.talks[idx];
+            const tm = parseTalkStartEnd(tk, s);
+            entries.push({
+              uid: talkKey(s.id, idx),
+              type: 'single-talk',
+              s,
+              talkIdx: idx,
+              tk,
+              start: tm.start,
+              end: tm.end
+            });
+          });
+        }
+      });
+      entries.sort((a, b) => toMin(a.start) - toMin(b.start));
+      return entries;
+    }
+
+    function getTotalSavedEntriesCount() {
+      return getMyScheduleEntriesForDay(1).length + getMyScheduleEntriesForDay(2).length;
+    }
+
+    function hasEntryConflict(entry, dayEntries) {
+      const s1 = toMin(entry.start), e1 = toMin(entry.end);
+      return dayEntries.some((o) => o.uid !== entry.uid && s1 < toMin(o.end) && toMin(o.start) < e1);
+    }
+
     function toggleSave(id, ev) {
       if (ev) ev.stopPropagation();
+      const s = SESSIONS.find((x) => x.id === id);
+      if (!s) return;
       const t = T[lang];
-      if (savedIds.has(id)) {
-        savedIds.delete(id);
+      const allIdx = getSelectableTalkIndices(s);
+      const st = getSessionSaveState(s);
+      savedIds.delete(s.id);
+      if (st.isFull) {
+        allIdx.forEach((i) => savedIds.delete(talkKey(s.id, i)));
         showToast(t.toastRemoved);
       } else {
-        savedIds.add(id);
-        showToast(t.toastAdded);
+        allIdx.forEach((i) => savedIds.add(talkKey(s.id, i)));
+        showToast(lang === 'ko' ? '세션 전체가 내 스케줄에 추가되었습니다' : 'Full session added to My Schedule');
       }
       persistSaved();
       render();
+    }
+
+    function toggleSaveTalk(sessionId, talkIdx, ev, refreshDetail) {
+      if (ev) ev.stopPropagation();
+      const s = SESSIONS.find((x) => x.id === sessionId);
+      if (!s) return;
+      const t = T[lang];
+      if (savedIds.has(s.id)) {
+        savedIds.delete(s.id);
+        getSelectableTalkIndices(s).forEach((i) => savedIds.add(talkKey(s.id, i)));
+      }
+      const key = talkKey(s.id, talkIdx);
+      if (savedIds.has(key)) {
+        savedIds.delete(key);
+        showToast(t.toastRemoved);
+      } else {
+        savedIds.add(key);
+        showToast(lang === 'ko' ? '선택한 강의가 내 스케줄에 추가되었습니다' : 'Lecture added to My Schedule');
+      }
+      persistSaved();
+      render();
+      if (refreshDetail) openDetail(sessionId);
     }
 
     // --- Interactive Venue Floor Map Data (Grand Walkerhill Seoul: B2F Vista Hall, B1F Grand Hall, 1F Walker Hall) ---
@@ -2532,9 +2738,13 @@
       const s = SESSIONS.find((x) => x.id === id);
       if (!s) return;
       const t = T[lang];
-      const isSaved = savedIds.has(s.id);
-      const closeLabel = lang === 'ko' ? '닫기' : 'Close';
-      const mapBtnLabel = lang === 'ko' ? '🗺 위치 보기' : '🗺 View Map';
+      const st = getSessionSaveState(s);
+      const isKo = lang === 'ko';
+      const closeLabel = isKo ? '닫기' : 'Close';
+      const mapBtnLabel = isKo ? '🗺 위치 보기' : '🗺 View Map';
+      const allBtnLabel = st.isFull
+        ? (isKo ? '★ 세션 전체 해제' : '★ Remove All')
+        : (isKo ? '★ 세션 전체 담기' : '★ Select All Lectures');
       document.getElementById('detailContent').innerHTML = `
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
           <div class="badges">
@@ -2555,23 +2765,41 @@
             </td>
           </tr>
           <tr>
-            <th>${t.thTalks}</th>
+            <th>
+              <div>${t.thTalks}</div>
+              ${st.total > 1 ? `
+                <button class="star-all-btn ${st.isFull ? 'saved' : (st.isPartial ? 'partial' : '')}" style="margin-top:6px;padding:4px 8px;font-size:10.5px;" onclick="toggleSave('${s.id}', event); openDetail('${s.id}');">
+                  ${st.isFull ? '★ ' + (isKo ? '전체해제' : 'Clear All') : '☆ ' + (isKo ? '전체선택' : 'All')}
+                </button>
+              ` : ''}
+            </th>
             <td>
               <ul class="talk-list">
-                ${s.talks.map((tk) => `
-                  <li class="talk-item">
-                    <div class="talk-time">${tk.time}</div>
-                    <div class="talk-topic">${tk.topic}</div>
-                    ${tk.speaker ? `<div class="talk-speaker">👤 ${tk.speaker}</div>` : ''}
-                  </li>
-                `).join('')}
+                ${s.talks.map((tk, idx) => {
+                  const canStar = isSelectableTalk(tk) && st.total > 1;
+                  const tkSaved = canStar && isTalkSaved(s, idx);
+                  return `
+                    <li class="talk-item" style="display:flex;align-items:center;justify-content:space-between;gap:8px;${tkSaved ? 'background:#FFFDF5;border-color:#FCD34D;' : ''}">
+                      <div style="flex:1;min-width:0;">
+                        <div class="talk-time">${tk.time}</div>
+                        <div class="talk-topic">${tk.topic}</div>
+                        ${tk.speaker ? `<div class="talk-speaker">👤 ${tk.speaker}</div>` : ''}
+                      </div>
+                      ${canStar ? `
+                        <button class="talk-star-btn ${tkSaved ? 'saved' : ''}" onclick="toggleSaveTalk('${s.id}', ${idx}, event, true)" title="${isKo ? '이 강의만 담기' : 'Bookmark lecture'}">
+                          ${tkSaved ? '★' : '☆'}
+                        </button>
+                      ` : ''}
+                    </li>
+                  `;
+                }).join('')}
               </ul>
             </td>
           </tr>
         </table>
         <div class="sheet-actions">
-          <button class="sheet-cta ${isSaved ? 'remove' : 'add'}" onclick="toggleSave('${s.id}'); openDetail('${s.id}');">
-            ${isSaved ? t.removeFromMy : t.addToMy}
+          <button class="sheet-cta ${st.isFull ? 'remove' : 'add'}" onclick="toggleSave('${s.id}', event); openDetail('${s.id}');">
+            ${allBtnLabel}
           </button>
           <button class="sheet-cta close-btn" onclick="closeDetail()">${closeLabel}</button>
         </div>
@@ -2620,7 +2848,7 @@
       return `
         <div class="day-tabs">
           ${[1, 2].map((d) => {
-            const cnt = SESSIONS.filter((s) => s.day === d && savedIds.has(s.id)).length;
+            const cnt = getMyScheduleEntriesForDay(d).length;
             return `
               <button class="day-tab ${d === activeDay ? 'active' : ''}" onclick="${handlerName}(${d})">
                 <div class="day-tab-main">${t.days[d].short}${showCounts ? ` (${cnt})` : ''}</div>
@@ -2677,7 +2905,7 @@
               </button>
 
               <button class="home-tile tile-my" onclick="switchTab('my')">
-                ${savedIds.size > 0 ? `<span class="home-tile-badge">${savedIds.size}</span>` : ''}
+                ${getTotalSavedEntriesCount() > 0 ? `<span class="home-tile-badge">${getTotalSavedEntriesCount()}</span>` : ''}
                 <div class="home-tile-label">${t.tileMy}</div>
                 <div class="home-tile-icon">
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
@@ -2763,13 +2991,44 @@
         main.innerHTML = searchBanner + (list.length ? `
           <div class="session-list">
             ${list.map((s) => {
-              const isSaved = savedIds.has(s.id);
+              const st = getSessionSaveState(s);
               const isLive = liveIdSet.has(s.id);
-              const matchedTalks = isSearching
-                ? s.talks.filter((tk) => (tk.topic + ' ' + (tk.speaker || '')).toLowerCase().includes(q))
-                : [];
+              const isKo = lang === 'ko';
+              const multiTalks = st.total > 1;
+              const starAllBtnHtml = multiTalks
+                ? `<button class="star-all-btn ${st.isFull ? 'saved' : (st.isPartial ? 'partial' : '')}" onclick="toggleSave('${s.id}', event)" aria-label="Bookmark Session">
+                     ${st.isFull ? '★ ' + (isKo ? '전체' : 'All') : (st.isPartial ? `★ ${st.saved}/${st.total}` : '☆ ' + (isKo ? '전체' : 'All'))}
+                   </button>`
+                : `<button class="star-btn ${st.hasAny ? 'saved' : ''}" onclick="toggleSave('${s.id}', event)" aria-label="Bookmark">
+                     ${st.hasAny ? '★' : '☆'}
+                   </button>`;
+
+              const talkRowsHtml = multiTalks
+                ? `<div class="card-talk-list">
+                    ${s.talks.map((tk, idx) => {
+                      if (!isSelectableTalk(tk)) return '';
+                      if (isSearching && !(tk.topic + ' ' + (tk.speaker || '')).toLowerCase().includes(q) && !(s.title + ' ' + s.category + ' ' + (s.aliases || '')).toLowerCase().includes(q)) return '';
+                      const tkSaved = isTalkSaved(s, idx);
+                      return `
+                        <div class="card-talk-row ${tkSaved ? 'is-saved' : ''}" onclick="toggleSaveTalk('${s.id}', ${idx}, event, false)">
+                          <div class="card-talk-body">
+                            <div class="card-talk-time">${tk.time}</div>
+                            <div class="card-talk-topic">${tk.topic}</div>
+                            ${tk.speaker ? `<div class="card-talk-speaker">👤 ${tk.speaker}</div>` : ''}
+                          </div>
+                          <button class="talk-star-btn ${tkSaved ? 'saved' : ''}" onclick="toggleSaveTalk('${s.id}', ${idx}, event, false)" aria-label="Bookmark Lecture">
+                            ${tkSaved ? '★' : '☆'}
+                          </button>
+                        </div>
+                      `;
+                    }).join('')}
+                   </div>`
+                : (s.talks[0] && s.talks[0].speaker && !s.talks[0].speaker.includes('Room') && !s.talks[0].speaker.includes('Foyer') && !s.talks[0].speaker.includes('Hall')
+                    ? `<div style="margin-top:5px;font-size:12px;color:#334155;font-weight:600;">👤 ${s.talks[0].speaker}</div>`
+                    : '');
+
               return `
-                <article id="session-card-${s.id}" class="session-card tone-${s.tone} ${isSaved ? 'saved' : ''} ${isLive ? 'is-live' : ''}" onclick="openDetail('${s.id}')">
+                <article id="session-card-${s.id}" class="session-card tone-${s.tone} ${st.hasAny ? 'saved' : ''} ${isLive ? 'is-live' : ''}" onclick="openDetail('${s.id}')">
                   <div class="card-top">
                     <div class="badges">
                       ${isLive ? `<span class="live-inline-badge"><span class="live-dot"></span> ${t.liveNow}</span>` : ''}
@@ -2779,16 +3038,10 @@
                       ${s.joint ? `<span class="joint-badge">${s.joint}</span>` : ''}
                       ${s.vwc ? `<span class="vwc-badge">${t.vwcBadge}</span>` : ''}
                     </div>
-                    <button class="star-btn ${isSaved ? 'saved' : ''}" onclick="toggleSave('${s.id}', event)" aria-label="Bookmark">
-                      ${isSaved ? '★' : '☆'}
-                    </button>
+                    ${starAllBtnHtml}
                   </div>
                   <div class="card-title">${s.title}</div>
-                  ${matchedTalks.length ? `
-                    <div style="margin-top:7px;font-size:11.5px;color:#182B59;background:rgba(255,255,255,0.9);padding:6px 9px;border-radius:9px;border:1px solid rgba(24,43,89,0.08);display:flex;flex-direction:column;gap:4px;">
-                      ${matchedTalks.map((tk) => `<div>🎤 <b>${tk.time}</b> ${tk.topic}${tk.speaker ? ` — <span style="color:#15988D;font-weight:700;">${tk.speaker}</span>` : ''}</div>`).join('')}
-                    </div>
-                  ` : ''}
+                  ${talkRowsHtml}
                   <div class="card-footer">
                     <button class="room-link-pill" onclick="openRoomMap('${s.room}', event)">📍 ${s.room} · 🗺</button>
                     <span class="card-more">${t.details}</span>
@@ -2801,13 +3054,12 @@
         return;
       }
 
-      // MY SCHEDULE TAB
+      // MY SCHEDULE TAB (Supports Both Full Sessions & Individual Starred Lectures)
       if (currentTab === 'my') {
-        const dayItems = SESSIONS
-          .filter((s) => s.day === mySelectedDay && savedIds.has(s.id))
-          .sort((a, b) => toMin(a.start) - toMin(b.start));
+        const dayEntries = getMyScheduleEntriesForDay(mySelectedDay);
+        const isKo = lang === 'ko';
 
-        if (!dayItems.length) {
+        if (!dayEntries.length) {
           main.innerHTML = `
             <div class="empty-state">
               <div class="empty-icon">☆</div>
@@ -2820,8 +3072,55 @@
 
         main.innerHTML = `
           <div class="timeline">
-            ${dayItems.map((s) => {
-              const conflict = hasConflict(s, dayItems);
+            ${dayEntries.map((entry) => {
+              const s = entry.s;
+              const conflict = hasEntryConflict(entry, dayEntries);
+              if (entry.type === 'single-talk') {
+                const tk = entry.tk;
+                return `
+                  <div class="timeline-item">
+                    <div class="timeline-dot ${conflict ? 'conflict' : ''}"></div>
+                    <article class="session-card tone-${s.tone}" onclick="openDetail('${s.id}')">
+                      <div class="card-top">
+                        <div class="badges">
+                          <span class="time-badge">${entry.start} – ${entry.end}</span>
+                          <span class="cat-badge">${s.category}</span>
+                          <span class="cat-badge" style="background:#FFF8E1;color:#B45309;border-color:#FCD34D;">${isKo ? '개별 강의' : 'Lecture'}</span>
+                          ${conflict ? `<span class="conflict-badge">⚠ ${t.conflict}</span>` : ''}
+                        </div>
+                        <button class="star-btn saved" onclick="toggleSaveTalk('${s.id}', ${entry.talkIdx}, event, false)" aria-label="Remove">★</button>
+                      </div>
+                      <div class="card-title">${tk.topic}</div>
+                      ${tk.speaker ? `<div style="margin-top:4px;font-size:12px;color:#0F766E;font-weight:700;">👤 ${tk.speaker}</div>` : ''}
+                      <div style="margin-top:3px;font-size:11px;color:#64748B;">📂 ${s.title}</div>
+                      <div class="card-footer">
+                        <button class="room-link-pill" onclick="openRoomMap('${s.room}', event)">📍 ${s.room} · 🗺</button>
+                        <span class="card-more">${t.details}</span>
+                      </div>
+                    </article>
+                  </div>
+                `;
+              }
+
+              // Full session or single-item session
+              const subTalksHtml = entry.type === 'full-session'
+                ? `<div class="card-talk-list">
+                    ${s.talks.map((tk, idx) => {
+                      if (!isSelectableTalk(tk)) return '';
+                      return `
+                        <div class="card-talk-row is-saved" onclick="toggleSaveTalk('${s.id}', ${idx}, event, false)">
+                          <div class="card-talk-body">
+                            <div class="card-talk-time">${tk.time}</div>
+                            <div class="card-talk-topic">${tk.topic}</div>
+                            ${tk.speaker ? `<div class="card-talk-speaker">👤 ${tk.speaker}</div>` : ''}
+                          </div>
+                          <button class="talk-star-btn saved" onclick="toggleSaveTalk('${s.id}', ${idx}, event, false)" title="${isKo ? '이 강의만 제외' : 'Remove lecture'}">★</button>
+                        </div>
+                      `;
+                    }).join('')}
+                   </div>`
+                : '';
+
               return `
                 <div class="timeline-item">
                   <div class="timeline-dot ${conflict ? 'conflict' : ''}"></div>
@@ -2832,9 +3131,10 @@
                         <span class="cat-badge">${s.category}</span>
                         ${conflict ? `<span class="conflict-badge">⚠ ${t.conflict}</span>` : ''}
                       </div>
-                      <button class="star-btn saved" onclick="toggleSave('${s.id}', event)" aria-label="Remove">★</button>
+                      <button class="star-all-btn saved" onclick="toggleSave('${s.id}', event)" aria-label="Remove">★ ${isKo ? '전체' : 'All'}</button>
                     </div>
                     <div class="card-title">${s.title}</div>
+                    ${subTalksHtml}
                     <div class="card-footer">
                       <button class="room-link-pill" onclick="openRoomMap('${s.room}', event)">📍 ${s.room} · 🗺</button>
                       ${s.vwc ? `<span class="vwc-badge">${t.vwcBadge}</span>` : (s.joint ? `<span class="joint-badge">${s.joint}</span>` : `<span class="card-more">${t.details}</span>`)}
@@ -2944,7 +3244,7 @@
       const ddayEl = document.getElementById('headerDdayBadge');
       if (ddayEl) ddayEl.textContent = getHeaderDDayText();
       document.getElementById('langToggleBtn').textContent = lang === 'ko' ? 'EN' : '한국어';
-      document.getElementById('savedCountBadge').textContent = savedIds.size;
+      document.getElementById('savedCountBadge').textContent = getTotalSavedEntriesCount();
 
       document.querySelectorAll('[data-i18n]').forEach((el) => {
         const key = el.getAttribute('data-i18n');
@@ -2999,7 +3299,7 @@
           <div class="page-subtitle">${t.mySub}</div>
           <div class="summary-grid">
             ${[1, 2].map((d) => {
-              const cnt = SESSIONS.filter((s) => s.day === d && savedIds.has(s.id)).length;
+              const cnt = getMyScheduleEntriesForDay(d).length;
               return `
                 <div class="summary-pill ${mySelectedDay === d ? 'active' : ''}" onclick="setMyDay(${d})">
                   <div class="summary-pill-day">${t.days[d].short} · ${t.days[d].date}</div>
