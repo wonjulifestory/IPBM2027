@@ -560,32 +560,44 @@
     }
     .app-shell.is-home .home-menu-grid {
       flex-shrink: 0;
-      gap: 9px !important;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 11px !important;
+      margin-top: auto;
     }
     .app-shell.is-home .home-tile {
-      padding: 12px 8px 11px !important;
-      gap: 6px !important;
-      border-radius: 16px !important;
+      min-height: 108px;
+      padding: 14px 14px 12px !important;
+      border-radius: 18px !important;
       border: none !important;
       background: linear-gradient(155deg, #524FB6 0%, #3E72C4 55%, #46A3D4 100%) !important;
-      box-shadow: 0 6px 16px rgba(62, 114, 196, 0.24) !important;
-    }
-    .app-shell.is-home .home-tile-icon {
-      width: 38px !important;
-      height: 38px !important;
-      border-radius: 11px !important;
-      background: rgba(255, 255, 255, 0.18) !important;
-      color: #FFFFFF !important;
-      box-shadow: none !important;
-    }
-    .app-shell.is-home .home-tile-icon svg {
-      width: 22px;
-      height: 22px;
+      box-shadow: 0 8px 18px rgba(62, 114, 196, 0.24) !important;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      justify-content: space-between !important;
+      position: relative;
     }
     .app-shell.is-home .home-tile-label {
-      font-size: 13px !important;
+      font-size: 15px !important;
+      font-weight: 800 !important;
       color: #FFFFFF !important;
-      letter-spacing: -0.01em;
+      text-align: left !important;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+    }
+    .app-shell.is-home .home-tile-icon {
+      width: 42px !important;
+      height: 42px !important;
+      border-radius: 12px !important;
+      background: rgba(255, 255, 255, 0.16) !important;
+      color: #FFFFFF !important;
+      box-shadow: none !important;
+      align-self: flex-end !important;
+    }
+    .app-shell.is-home .home-tile-icon svg {
+      width: 24px;
+      height: 24px;
     }
     .app-shell.is-home .home-install-cta {
       display: none !important;
@@ -1343,7 +1355,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const APP_VERSION = 'v1.1.3';
+    const APP_VERSION = 'v1.1.4';
     const STORAGE_KEY_SAVED = 'ipbm2027_saved_sessions_v1';
     const STORAGE_KEY_LANG = 'ipbm2027_lang_v1';
 
@@ -2576,12 +2588,57 @@
       return (s.title + ' ' + s.subtitle + ' ' + s.category + ' ' + s.room + ' ' + (s.joint || '') + ' ' + (s.aliases || '') + ' ' + talkTxt).toLowerCase();
     }
 
+    let simLiveMode = false;
+    function toggleSimLiveInSheet() {
+      simLiveMode = !simLiveMode;
+      openLiveBoardSheet();
+    }
+
+    function openLiveBoardSheet() {
+      const t = T[lang];
+      const isKo = lang === 'ko';
+      const closeLabel = isKo ? '닫기' : 'Close';
+      const simKst = simLiveMode
+        ? { dateStr: '2027-04-02', hhmm: '14:20', mins: 14 * 60 + 20 }
+        : getCurrentKstParts();
+      const activeDay = Number(Object.keys(DAY_DATES).find((k) => DAY_DATES[k] === simKst.dateStr)) || 0;
+      const bodyHtml = activeDay > 0
+        ? renderRoomBoardForDay(activeDay, simKst, isKo)
+        : '<div class="room-board">' + BOARD_ROOMS.map((room) =>
+            '<div class="room-row" onclick="openRoomMap(\'' + room + '\')" style="background:#F8FAFC;border:1px solid #CBD5E1;">' +
+              '<div class="room-row-top">' +
+                '<span class="room-name">📍 ' + room + '</span>' +
+                '<span class="room-status done">' + (isKo ? '🗺 위치 보기' : '🗺 View Map') + '</span>' +
+              '</div>' +
+              '<div class="room-session-time"><span>' + (isKo ? '2027. 4. 2(금)–3(토) 진행 예정' : 'Scheduled for Apr 2–3, 2027') + '</span></div>' +
+            '</div>'
+          ).join('') + '</div>';
+
+      document.getElementById('detailContent').innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
+          <div style="display:flex;align-items:center;gap:7px;">
+            <span class="live-pill ${activeDay > 0 ? '' : 'dday'}">📍 ${isKo ? '방별 실시간 현황' : 'Live by Room'}</span>
+            <button onclick="toggleSimLiveInSheet()" style="border:1px solid #CBD5E1;background:#FFFFFF;color:#182B59;font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;cursor:pointer;">
+              ${simLiveMode ? (isKo ? '✕ 미리보기 종료' : '✕ Exit Demo') : (isKo ? '▶ 진행중 미리보기' : '▶ Demo Live')}
+            </button>
+          </div>
+          <button class="sheet-top-close" onclick="closeDetail()">✕ ${closeLabel}</button>
+        </div>
+        ${bodyHtml}
+        <div class="sheet-actions">
+          <button class="sheet-cta close-btn" style="flex:1;" onclick="closeDetail()">${closeLabel}</button>
+        </div>
+      `;
+      document.getElementById('detailBackdrop').classList.add('open');
+    }
+
     function renderBodyOnly() {
       const t = T[lang];
       const main = document.getElementById('mainContent');
 
-      // HOME SCREEN (Zero-Scroll One-Viewport Layout)
+      // HOME SCREEN (Zero-Scroll 2x2 Official Mobile Layout)
       if (currentTab === 'home') {
+        const liveLabel = lang === 'ko' ? '방별 실시간 현황' : 'Live by Room';
         main.innerHTML = `
           <div class="home-wrap">
             <section class="home-visual-card">
@@ -2590,6 +2647,7 @@
 
             <section class="home-menu-grid">
               <button class="home-tile tile-program" onclick="switchTab('program')">
+                <div class="home-tile-label">${t.tileProgram}</div>
                 <div class="home-tile-icon">
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="3" y="4" width="18" height="18" rx="3"></rect>
@@ -2600,20 +2658,33 @@
                     <line x1="8" y1="18" x2="13" y2="18"></line>
                   </svg>
                 </div>
-                <div class="home-tile-label">${t.tileProgram}</div>
               </button>
 
               <button class="home-tile tile-my" onclick="switchTab('my')">
                 ${savedIds.size > 0 ? `<span class="home-tile-badge">${savedIds.size}</span>` : ''}
+                <div class="home-tile-label">${t.tileMy}</div>
                 <div class="home-tile-icon">
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 2.5l2.92 5.92 6.53.95-4.72 4.6 1.11 6.5L12 17.4l-5.84 3.07 1.11-6.5-4.72-4.6 6.53-.95L12 2.5z"/>
                   </svg>
                 </div>
-                <div class="home-tile-label">${t.tileMy}</div>
+              </button>
+
+              <button class="home-tile tile-live" onclick="openLiveBoardSheet()">
+                <div class="home-tile-label">${liveLabel}</div>
+                <div class="home-tile-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M16.24 7.76a6 6 0 0 1 0 8.49"></path>
+                    <path d="M7.76 16.24a6 6 0 0 1 0-8.49"></path>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                    <path d="M4.93 19.07a10 10 0 0 1 0-14.14"></path>
+                  </svg>
+                </div>
               </button>
 
               <button class="home-tile tile-info" onclick="switchTab('venue')">
+                <div class="home-tile-label">${t.tileInfo}</div>
                 <div class="home-tile-icon">
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10"></circle>
@@ -2621,13 +2692,8 @@
                     <line x1="12" y1="8" x2="12.01" y2="8"></line>
                   </svg>
                 </div>
-                <div class="home-tile-label">${t.tileInfo}</div>
               </button>
             </section>
-
-            ${renderHomeInstallBtn()}
-
-            ${renderLiveWidget()}
 
             <footer class="home-footer">
               <div><b>${t.footerOrg}</b></div>
