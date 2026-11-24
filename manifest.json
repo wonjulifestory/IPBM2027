@@ -1,0 +1,25 @@
+{
+  "name": "IPBM 2027 — Program & My Schedule",
+  "short_name": "IPBM 2027",
+  "description": "International PancreatoBiliary Meeting 2027 (April 2–3, 2027, Grand Walkerhill Seoul, Korea)",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFFFFF",
+  "theme_color": "#15988D",
+  "icons": [
+    {
+      "src": "./assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
