@@ -1370,7 +1370,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const APP_VERSION = 'v1.1.8';
+    const APP_VERSION = 'v1.1.9';
     const STORAGE_KEY_SAVED = 'ipbm2027_saved_sessions_v1';
     const STORAGE_KEY_LANG = 'ipbm2027_lang_v1';
 
@@ -2643,53 +2643,9 @@
     }
 
     let liveSheetDay = 1;
-    function setLiveSheetDay(d) {
+    function setLiveDay(d) {
       liveSheetDay = d;
-      openLiveBoardSheet();
-    }
-
-    function openLiveBoardSheet() {
-      const t = T[lang];
-      const isKo = lang === 'ko';
-      const closeLabel = isKo ? '닫기' : 'Close';
-      const realKst = getCurrentKstParts();
-      const realActiveDay = Number(Object.keys(DAY_DATES).find((k) => DAY_DATES[k] === realKst.dateStr)) || 0;
-      const targetDay = realActiveDay > 0 ? realActiveDay : liveSheetDay;
-      // Map current clock time into active conference hours (09:00–16:50) if outside congress hours so live lectures are always shown
-      const effectiveMins = (realKst.mins >= 9 * 60 && realKst.mins < 16 * 60 + 50)
-        ? realKst.mins
-        : 9 * 60 + 25;
-      const effH = String(Math.floor(effectiveMins / 60)).padStart(2, '0');
-      const effM = String(effectiveMins % 60).padStart(2, '0');
-      const effKst = { dateStr: DAY_DATES[targetDay], hhmm: `${effH}:${effM}`, mins: effectiveMins };
-
-      const daySwitchHtml = `
-        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:10px;">
-          ${[1, 2].map((d) => `
-            <button onclick="setLiveSheetDay(${d})" style="border:1.5px solid ${targetDay === d ? '#15988D' : '#CBD5E1'};background:${targetDay === d ? '#15988D' : '#FFFFFF'};color:${targetDay === d ? '#FFFFFF' : '#334155'};font-size:12px;font-weight:800;padding:7px 8px;border-radius:10px;cursor:pointer;">
-              ${t.days[d].short} · ${t.days[d].date}
-            </button>
-          `).join('')}
-        </div>
-      `;
-
-      document.getElementById('detailContent').innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
-          <div style="display:flex;align-items:center;gap:7px;">
-            <span class="live-pill"><span class="live-dot"></span> ${isKo ? '방별 실시간 강의 현황' : 'Live Lectures by Room'}</span>
-          </div>
-          <button class="sheet-top-close" onclick="closeDetail()">✕ ${closeLabel}</button>
-        </div>
-        <div style="font-size:11.5px;color:#475569;margin-bottom:8px;font-weight:600;">
-          💡 ${isKo ? '강의를 누르면 해당 프로그램 화면으로 바로 이동합니다.' : 'Tap any room lecture to jump directly to Program.'}
-        </div>
-        ${daySwitchHtml}
-        ${renderRoomBoardForDay(targetDay, effKst, isKo)}
-        <div class="sheet-actions">
-          <button class="sheet-cta close-btn" style="flex:1;" onclick="closeDetail()">${closeLabel}</button>
-        </div>
-      `;
-      document.getElementById('detailBackdrop').classList.add('open');
+      render();
     }
 
     function renderBodyOnly() {
@@ -2730,7 +2686,7 @@
                 </div>
               </button>
 
-              <button class="home-tile tile-live" onclick="openLiveBoardSheet()">
+              <button class="home-tile tile-live" onclick="switchTab('live')">
                 <div class="home-tile-label">${liveLabel}</div>
                 <div class="home-tile-icon">
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -2762,6 +2718,23 @@
             </footer>
           </div>
         `;
+        return;
+      }
+
+      // LIVE BY ROOM TAB (Dedicated Full Screen Page)
+      if (currentTab === 'live') {
+        const isKo = lang === 'ko';
+        const realKst = getCurrentKstParts();
+        const realActiveDay = Number(Object.keys(DAY_DATES).find((k) => DAY_DATES[k] === realKst.dateStr)) || 0;
+        const targetDay = realActiveDay > 0 ? realActiveDay : liveSheetDay;
+        const effectiveMins = (realKst.mins >= 9 * 60 && realKst.mins < 16 * 60 + 50)
+          ? realKst.mins
+          : 9 * 60 + 25;
+        const effH = String(Math.floor(effectiveMins / 60)).padStart(2, '0');
+        const effM = String(effectiveMins % 60).padStart(2, '0');
+        const effKst = { dateStr: DAY_DATES[targetDay], hhmm: `${effH}:${effM}`, mins: effectiveMins };
+
+        main.innerHTML = renderRoomBoardForDay(targetDay, effKst, isKo);
         return;
       }
 
@@ -3010,6 +2983,15 @@
             <button class="chip ${trackFilter === 'NURSE' ? 'active' : ''}" onclick="setTrackFilter('NURSE')">${t.trackNurse}</button>
           </div>
         `;
+      } else if (currentTab === 'live') {
+        const isKo = lang === 'ko';
+        subHeader.classList.remove('hidden');
+        subHeader.innerHTML = `
+          <div class="page-title">${isKo ? '방별 실시간 현황' : 'Live by Room'}</div>
+          <div class="page-subtitle">${isKo ? '강의를 누르면 프로그램 화면으로 바로 이동합니다' : 'Tap any room lecture to jump directly to Program'}</div>
+        `;
+        dayTabsEl.innerHTML = renderDayTabsHTML(liveSheetDay, 'setLiveDay', false);
+        filterEl.innerHTML = '';
       } else if (currentTab === 'my') {
         subHeader.classList.remove('hidden');
         subHeader.innerHTML = `
